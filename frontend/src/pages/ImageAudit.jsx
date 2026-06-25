@@ -1,25 +1,22 @@
 import React, { useState } from 'react'
 import {
   Card, Form, Input, Button, Select, Space, Tag, Result, Typography,
-  Upload, List, Alert, Divider, Image, message, Row, Col, Descriptions
+  Upload, List, Image, message, Row, Col, Segmented, Steps, Divider, Table, Descriptions, Alert, Spin
 } from 'antd'
 import {
   PictureOutlined, UploadOutlined, AuditOutlined,
-  CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined
+  CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined,
+  ThunderboltOutlined, SafetyCertificateOutlined, ExperimentOutlined, FileProtectOutlined, WarningOutlined
 } from '@ant-design/icons'
-import { auditAPI } from '../services/api'
+import { auditAPI, advancedAuditAPI } from '../services/api'
 
 const { TextArea } = Input
 const { Title, Text, Paragraph } = Typography
 
 const REGIONS = [
-  { value: 'SG', label: '🇸🇬 新加坡' },
-  { value: 'MY', label: '🇲🇾 马来西亚' },
-  { value: 'TH', label: '🇹🇭 泰国' },
-  { value: 'AU', label: '🇦🇺 澳洲' },
-  { value: 'JP', label: '🇯🇵 日本' },
-  { value: 'KR', label: '🇰🇷 韩国' },
-  { value: 'IN', label: '🇮🇳 印度' }
+  { value: 'SG', label: '🇸🇬 新加坡' }, { value: 'MY', label: '🇲🇾 马来西亚' },
+  { value: 'TH', label: '🇹🇭 泰国' }, { value: 'AU', label: '🇦🇺 澳洲' },
+  { value: 'JP', label: '🇯🇵 日本' }, { value: 'KR', label: '🇰🇷 韩国' }, { value: 'IN', label: '🇮🇳 印度' }
 ]
 
 const RISK_COLORS = {
@@ -34,145 +31,165 @@ const ImageAudit = () => {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [mode, setMode] = useState('quick')
+
+  const [r01Result, setR01Result] = useState(null)
+  const [r02Loading, setR02Loading] = useState(false)
+  const [r02Result, setR02Result] = useState(null)
+  const [evidenceList, setEvidenceList] = useState([])
 
   const onFinish = async (values) => {
     setLoading(true)
-    setResult(null)
+    if (mode === 'advanced') { setR01Result(null); setR02Result(null); setEvidenceList([]) }
     try {
-      const formData = new FormData()
-      if (values.image?.fileList?.[0]?.originFileObj) {
-        formData.append('image', values.image.fileList[0].originFileObj)
+      if (mode === 'quick') {
+        const formData = new FormData()
+        if (values.image?.fileList?.[0]?.originFileObj) formData.append('image', values.image.fileList[0].originFileObj)
+        formData.append('image_description', values.image_description || '')
+        formData.append('ocr_text', values.ocr_text || '')
+        formData.append('regions', (values.regions || ['SG']).join(','))
+        formData.append('category', values.category || '小家电')
+        const response = await auditAPI.auditImage(formData)
+        setResult(response)
+      } else {
+        const text = [values.ocr_text, values.image_description].filter(Boolean).join('\n')
+        const response = await advancedAuditAPI.auditR01({ text, regions: values.regions || ['SG'], category: values.category || '小家电' })
+        setR01Result(response)
+        setResult(null)
       }
-      formData.append('image_description', values.image_description || '')
-      formData.append('ocr_text', values.ocr_text || '')
-      formData.append('regions', (values.regions || ['SG']).join(','))
-      formData.append('category', values.category || '小家电')
-      formData.append('advert_name', values.advert_name || '')
-      formData.append('title', values.title || '图片广告')
+      message.success(mode === 'quick' ? '审核完成' : 'R01 扫描完成')
+    } catch (error) { message.error('审核失败: ' + (error.message || '未知错误')) }
+    finally { setLoading(false) }
+  }
 
-      const response = await auditAPI.auditImage(formData)
-      setResult(response)
-      message.success('图片审核完成')
-    } catch (error) {
-      message.error('审核失败: ' + (error.message || '未知错误'))
-    } finally {
-      setLoading(false)
-    }
+  const onR02Submit = async () => {
+    if (!evidenceList.length) { message.warning('请至少添加一份证据'); return }
+    setR02Loading(true)
+    try { const r = await advancedAuditAPI.auditR02({ r01_result: r01Result, evidence_files: evidenceList }); setR02Result(r); message.success('R02 完成') }
+    catch (e) { message.error('审查失败') }
+    finally { setR02Loading(false) }
+  }
+
+  const addEvidence = (v) => {
+    setEvidenceList([...evidenceList, { name: v.name, type: v.type || '', date: v.date || '', covers: v.covers || [] }])
+    message.success('证据已添加')
   }
 
   return (
     <div>
       <Title level={4}><PictureOutlined /> 图片审核</Title>
-      <Paragraph type="secondary">
-        上传广告图片，输入图片上的文字内容或图片描述，系统自动审核合规性
-      </Paragraph>
+      <Paragraph type="secondary">上传广告图片，输入图片文字和描述，系统自动审核</Paragraph>
+
+      <Segmented value={mode} onChange={setMode} style={{ marginBottom: 16 }}
+        options={[
+          { value: 'quick', icon: <ThunderboltOutlined />, label: '快速审核' },
+          { value: 'advanced', icon: <SafetyCertificateOutlined />, label: '高级审核 (R01/R02)' }
+        ]} />
+
+      {mode === 'advanced' && (
+        <Steps current={r01Result ? (r02Result ? 2 : 1) : 0} size="small" style={{ marginBottom: 16 }}>
+          <Steps.Step title="R01 A-K扫描" icon={<AuditOutlined />} />
+          <Steps.Step title="R02 证据审查" icon={<ExperimentOutlined />} />
+          <Steps.Step title="合规结论" icon={<FileProtectOutlined />} />
+        </Steps>
+      )}
 
       <Card style={{ marginBottom: 24 }}>
         <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ regions: ['SG'], category: '小家电' }}>
-          <Form.Item name="image" label="上传广告图片" valuePropName="fileList" getValueFromEvent={(e) => e?.fileList ? [e.fileList[e.fileList.length - 1]] : []}>
-            <Upload
-              listType="picture-card"
-              maxCount={1}
-              beforeUpload={(file) => {
-                const reader = new FileReader()
-                reader.onload = (e) => setPreview(e.target.result)
-                reader.readAsDataURL(file)
-                return false
-              }}
-              accept="image/*"
-            >
-              <div>
-                <UploadOutlined />
-                <div style={{ marginTop: 8 }}>上传图片</div>
-              </div>
+          <Form.Item name="image" label="上传广告图片" valuePropName="fileList" getValueFromEvent={e => e?.fileList ? [e.fileList[e.fileList.length - 1]] : []}>
+            <Upload listType="picture-card" maxCount={1} beforeUpload={(f) => { const r = new FileReader(); r.onload = e => setPreview(e.target.result); r.readAsDataURL(f); return false }} accept="image/*">
+              <div><UploadOutlined /><div style={{ marginTop: 8 }}>上传</div></div>
             </Upload>
           </Form.Item>
-
-          {preview && (
-            <div style={{ marginBottom: 16 }}>
-              <Image src={preview} alt="预览" style={{ maxHeight: 200 }} />
-            </div>
-          )}
+          {preview && <div style={{ marginBottom: 16 }}><Image src={preview} alt="预览" style={{ maxHeight: 200 }} /></div>}
 
           <Form.Item name="ocr_text" label="图片上的文字内容">
-            <TextArea rows={3} placeholder="输入图片上出现的所有文字/文案，如：标题、标语、参数、小字说明等..." />
+            <TextArea rows={3} placeholder="输入图片上出现的文字/文案..." />
           </Form.Item>
-
           <Form.Item name="image_description" label="图片内容描述">
-            <TextArea rows={2} placeholder="描述图片内容，如：产品主图、使用场景图、功能对比图..." />
+            <TextArea rows={2} placeholder="描述图片内容，如：产品主图、使用场景图..." />
           </Form.Item>
-
           <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item name="category" label="产品品类">
-                <Select options={[
-                  { value: '小家电', label: '小家电' },
-                  { value: '美妆个护', label: '美妆个护' },
-                  { value: '婴童', label: '婴童' },
-                  { value: '保健食品', label: '保健食品' },
-                  { value: '服装', label: '服装' },
-                  { value: '数码', label: '数码' },
-                ]} />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
-              <Form.Item name="regions" label="目标法域" rules={[{ required: true }]}>
-                <Select mode="multiple" options={REGIONS} />
-              </Form.Item>
-            </Col>
+            <Col span={8}><Form.Item name="category" label="品类"><Select options={[{ value: '小家电', label: '小家电' }, { value: '美妆个护', label: '美妆个护' }, { value: '婴童', label: '婴童' }, { value: '保健食品', label: '保健食品' }, { value: '服装', label: '服装' }, { value: '数码', label: '数码' }]} /></Form.Item></Col>
+            <Col span={16}><Form.Item name="regions" label="目标法域" rules={[{ required: true }]}><Select mode="multiple" options={REGIONS} /></Form.Item></Col>
           </Row>
-
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} size="large" icon={<AuditOutlined />} block>
-              开始审核
+              {mode === 'quick' ? '快速审核' : '开始 R01 扫描'}
             </Button>
           </Form.Item>
         </Form>
       </Card>
 
-      {result && (
-        <Card
-          title="审核结果"
-          style={{ borderLeft: `4px solid ${result.overall_risk === 'critical' || result.overall_risk === 'high' ? '#ff4d4f' : result.overall_risk === 'medium' ? '#faad14' : '#52c41a'}` }}
-        >
-          <Result
-            status={result.overall_status === 'rejected' ? 'error' : result.overall_status === 'warning' ? 'warning' : 'success'}
-            title={`${RISK_COLORS[result.overall_risk]?.text} — ${result.overall_status === 'rejected' ? '审核拒绝' : result.overall_status === 'warning' ? '需要注意' : '通过'}`}
-          />
+      {loading && <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div>}
 
+      {/* 快速审核结果 */}
+      {result && !loading && mode === 'quick' && (
+        <Card title="审核结果" style={{ borderLeft: `4px solid ${result.overall_risk === 'critical' || result.overall_risk === 'high' ? '#ff4d4f' : result.overall_risk === 'medium' ? '#faad14' : '#52c41a'}` }}>
+          <Result status={result.overall_status === 'rejected' ? 'error' : result.overall_status === 'warning' ? 'warning' : 'success'}
+            title={`${RISK_COLORS[result.overall_risk]?.text} — ${result.overall_status === 'rejected' ? '拒绝' : result.overall_status === 'warning' ? '需注意' : '通过'}`} />
           {result.hard_violations?.length > 0 && (
             <Card title="违规详情" size="small" style={{ marginBottom: 16 }}>
-              <List
-                dataSource={result.hard_violations}
-                renderItem={(item, idx) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      avatar={<Tag color={item.severity === 'critical' || item.severity === 'high' ? 'red' : 'orange'}>{item.severity}</Tag>}
-                      title={<Space><Text strong>{item.rule_name || item.source}</Text><Tag>{item.matched_text}</Tag></Space>}
-                      description={item.violation_desc || item.suggestion}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
-          )}
-
-          {result.similar_cases?.length > 0 && (
-            <Card title="相似案例" size="small">
-              <List
-                dataSource={result.similar_cases}
-                renderItem={(item, idx) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      title={item.title}
-                      description={item.decision}
-                    />
-                  </List.Item>
-                )}
-              />
+              <List dataSource={result.hard_violations} renderItem={(item) => (
+                <List.Item><List.Item.Meta avatar={<Tag color={item.severity === 'critical' || item.severity === 'high' ? 'red' : 'orange'}>{item.severity}</Tag>}
+                  title={<Space><Text strong>{item.rule_name}</Text><Tag>{item.matched_text}</Tag></Space>} description={item.violation_desc || item.suggestion} /></List.Item>
+              )} />
             </Card>
           )}
         </Card>
+      )}
+
+      {/* 高级审核结果 */}
+      {r01Result && !loading && mode === 'advanced' && (
+        <div>
+          <Card style={{ marginBottom: 16, borderLeft: '4px solid ' + (r01Result.overall_risk === 'critical' || r01Result.overall_risk === 'high' ? '#ff4d4f' : r01Result.overall_risk === 'medium' ? '#faad14' : '#52c41a') }}>
+            <Result status={r01Result.overall_risk === 'critical' || r01Result.overall_risk === 'high' ? 'error' : r01Result.overall_risk === 'medium' ? 'warning' : 'success'}
+              title={`R01 扫描完成 — ${RISK_COLORS[r01Result.overall_risk]?.text}`}
+              subTitle={`共 ${r01Result.summary.total_issues} 个问题: 🔴${r01Result.summary.forced_count}强制 / 🟡${r01Result.summary.biz_confirm_count}待确认 / 🟢${r01Result.summary.reminder_count}提醒 / ✏️${r01Result.summary.text_quality_count}质检`} />
+          </Card>
+          {r01Result.forced_changes?.length > 0 && (
+            <Card title={<Space><CloseCircleOutlined style={{ color: '#ff4d4f' }} /> 🔴 强制修改 ({r01Result.forced_changes.length}条)</Space>} style={{ marginBottom: 16, borderLeft: '4px solid #ff4d4f' }}>
+              <List dataSource={r01Result.forced_changes} renderItem={(item) => (
+                <List.Item><List.Item.Meta avatar={<Tag color="red">{item.category}</Tag>}
+                  title={<Space><Text strong>{item.category_name}</Text><Tag color="volcano">{item.matched_keyword}</Tag></Space>}
+                  description={<div><Paragraph>{item.description}</Paragraph><Alert message={`建议: ${item.suggestion}`} type="error" showIcon size="small" /></div>} /></List.Item>
+              )} />
+            </Card>
+          )}
+          {r01Result.biz_confirm?.length > 0 && (
+            <Card title={<Space><ExclamationCircleOutlined style={{ color: '#faad14' }} /> 🟡 业务确认 ({r01Result.biz_confirm.length}条)</Space>} style={{ marginBottom: 16, borderLeft: '4px solid #faad14' }}>
+              <List dataSource={r01Result.biz_confirm} renderItem={(item) => (
+                <List.Item><List.Item.Meta avatar={<Tag color="orange">{item.category}</Tag>}
+                  title={<Space><Text strong>{item.category_name}</Text><Tag color="gold">{item.matched_keyword}</Tag></Space>}
+                  description={<div><Paragraph>{item.description}</Paragraph><Alert message={`建议: ${item.suggestion}`} type="warning" showIcon size="small" />
+                    {item.evidence_required && <Alert message={`需提供: ${item.evidence_required}`} type="info" showIcon size="small" style={{ marginTop: 8 }} />}</div>} /></List.Item>
+              )} />
+            </Card>
+          )}
+          <Divider>R02 证据审查</Divider>
+          <Card title="添加证据材料" style={{ marginBottom: 16 }}>
+            <Form layout="inline" onFinish={addEvidence}>
+              <Form.Item name="name" label="文件名" rules={[{ required: true }]}><Input placeholder="SGS报告.pdf" /></Form.Item>
+              <Form.Item name="type" label="机构"><Select style={{ width: 140 }} options={[{ value: 'SGS', label: 'SGS' }, { value: 'Intertek', label: 'Intertek' }, { value: 'TÜV', label: 'TÜV' }, { value: 'BV', label: 'BV' }, { value: '内部测试', label: '内部测试' }]} /></Form.Item>
+              <Form.Item name="date" label="日期"><Input placeholder="2025-06-01" /></Form.Item>
+              <Form.Item name="covers" label="覆盖类别"><Select mode="multiple" style={{ width: 200 }} options={['I', 'J', 'K', 'B', 'D', 'F', 'G'].map(v => ({ value: v, label: v }))} /></Form.Item>
+              <Form.Item><Button type="primary" htmlType="submit" icon={<ExperimentOutlined />}>添加</Button></Form.Item>
+            </Form>
+            {evidenceList.length > 0 && <Table style={{ marginTop: 16 }} dataSource={evidenceList.map((e, i) => ({ ...e, key: i }))} size="small" pagination={false}
+              columns={[{ title: '文件名', dataIndex: 'name' }, { title: '机构', dataIndex: 'type' }, { title: '日期', dataIndex: 'date' }, { title: '覆盖', dataIndex: 'covers', render: v => v?.join(',') || '-' }, { title: '操作', render: (_, __, idx) => <Button type="link" danger onClick={() => setEvidenceList(evidenceList.filter((_, i) => i !== idx))}>删除</Button> }]} />}
+            {r01Result.biz_confirm?.length > 0 && <Button type="primary" size="large" icon={<ExperimentOutlined />} onClick={onR02Submit} loading={r02Loading} style={{ marginTop: 16 }} block>开始 R02</Button>}
+          </Card>
+          {r02Result && (
+            <Card title={<Space><FileProtectOutlined /> R02 结果</Space>} style={{ borderLeft: '4px solid #1890ff' }}>
+              <Result status={r02Result.conclusion === '可上线' ? 'success' : 'warning'} title={r02Result.conclusion} subTitle={r02Result.conclusion_detail} />
+              <Table dataSource={r02Result.evidence_review?.map((e, i) => ({ ...e, key: i })) || []} size="small" pagination={false}
+                columns={[{ title: '类别', dataIndex: 'category', width: 50 }, { title: '风险', dataIndex: 'category_name', width: 100 }, { title: '宣称', dataIndex: 'original_claim', width: 80 },
+                  { title: '证据', dataIndex: 'evidence_files', render: v => v?.join(',') || '无' }, { title: '评级', dataIndex: 'rating', render: v => <Tag color={v?.includes('✅') ? 'green' : v?.includes('⚠️') ? 'orange' : 'red'}>{v}</Tag> },
+                  { title: '说明', dataIndex: 'reason' }, { title: '处理', dataIndex: 'action' }]} />
+              <Descriptions bordered size="small" style={{ marginTop: 16 }}><Descriptions.Item label="✅ 充分">{r02Result.summary?.sufficient}</Descriptions.Item><Descriptions.Item label="⚠️ 部分">{r02Result.summary?.partial}</Descriptions.Item><Descriptions.Item label="❌ 不充分">{r02Result.summary?.insufficient}</Descriptions.Item></Descriptions>
+            </Card>
+          )}
+        </div>
       )}
     </div>
   )

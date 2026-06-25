@@ -7,7 +7,6 @@ import {
   BookOutlined,
   AlertOutlined,
   DashboardOutlined,
-  SafetyCertificateOutlined,
   PictureOutlined,
   VideoCameraOutlined
 } from '@ant-design/icons'
@@ -18,7 +17,6 @@ import VideoAudit from './pages/VideoAudit'
 import Knowledge from './pages/Knowledge'
 import Rules from './pages/Rules'
 import Cases from './pages/Cases'
-import AdvancedAudit from './pages/AdvancedAudit'
 
 const { Header, Sider, Content } = Layout
 
@@ -31,7 +29,6 @@ function App() {
     { key: 'audit', icon: <AuditOutlined />, label: '文字审核' },
     { key: 'image-audit', icon: <PictureOutlined />, label: '图片审核' },
     { key: 'video-audit', icon: <VideoCameraOutlined />, label: '视频审核' },
-    { key: 'advanced-audit', icon: <SafetyCertificateOutlined />, label: '高级审核' },
     { key: 'knowledge', icon: <BookOutlined />, label: '知识库管理' },
     { key: 'rules', icon: <AlertOutlined />, label: '法规规则' },
     { key: 'cases', icon: <FileTextOutlined />, label: '案例库' }
@@ -47,8 +44,6 @@ function App() {
         return <ImageAudit />
       case 'video-audit':
         return <VideoAudit />
-      case 'advanced-audit':
-        return <AdvancedAudit />
       case 'knowledge':
         return <Knowledge />
       case 'rules':
