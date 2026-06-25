@@ -22,13 +22,13 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ /app/backend/
 
 # 复制前端构建产物
-COPY --from=frontend-builder /app/frontend/dist /app/backend/frontend/dist/
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist/
 
-# 复制 SQLite 种子数据库
-COPY backend/data/ /app/backend/data/
+# 创建数据目录
+RUN mkdir -p /app/backend/data
 
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令
-CMD ["sh", "-c", "cd /app/backend && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# 启动命令（自动初始化数据库）
+CMD ["sh", "-c", "cd /app/backend && python init_data.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

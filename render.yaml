@@ -3,7 +3,7 @@ services:
     name: ad-audit-system
     env: python
     buildCommand: pip install -r backend/requirements.txt && cd frontend && npm install && npm run build
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
+    startCommand: cd backend && mkdir -p data && python init_data.py && uvicorn app.main:app --host 0.0.0.0 --port 8000
     envVars:
       - key: DATABASE_URL
         value: sqlite:///./data/ad_audit.db
