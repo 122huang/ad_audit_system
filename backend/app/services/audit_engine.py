@@ -280,7 +280,14 @@ class AuditEngine:
 
         max_hard_severity = RiskLevel.low
         for v in hard_violations:
-            severity = v.severity if hasattr(v.severity, 'value') else RiskLevel(v.get("severity", "medium"))
+            if isinstance(v, dict):
+                sev = v.get("severity", "medium")
+                if isinstance(sev, RiskLevel):
+                    severity = sev
+                else:
+                    severity = RiskLevel(sev.value if hasattr(sev, 'value') else str(sev))
+            else:
+                severity = v.severity if hasattr(v.severity, 'value') else RiskLevel(str(v.severity))
             if self._risk_level_value(severity) > self._risk_level_value(max_hard_severity):
                 max_hard_severity = severity
 

@@ -18,6 +18,13 @@ def _id():
     return str(uuid.uuid4())
 
 
+def _get(v, key, default=None):
+    """安全获取属性或字典值，兼容ViolationItem和dict"""
+    if isinstance(v, dict):
+        return v.get(key, default)
+    return getattr(v, key, default)
+
+
 @router.post("/text", response_model=AuditResponse)
 def audit_text(request: TextAuditRequest, db: Session = Depends(get_db)):
     if not request.regions:
@@ -56,19 +63,21 @@ def audit_text(request: TextAuditRequest, db: Session = Depends(get_db)):
 
         for v in result["hard_violations"]:
             from app.models.models import AuditResult as AuditResultModel
+            sev = _get(v, "severity", "medium")
+            sev_val = sev.value if hasattr(sev, 'value') else str(sev)
             ar = AuditResultModel(
                 id=_id(),
                 material_id=material.id,
                 region_code=region_code,
-                source=v.source,
-                rule_code=v.rule_code,
-                rule_name=v.rule_name,
-                matched_text=v.matched_text,
-                violation_desc=v.violation_desc,
-                suggestion=v.suggestion,
-                severity=v.severity.value if hasattr(v.severity, 'value') else str(v.severity),
-                confidence=v.confidence,
-                is_blocked=v.is_blocked
+                source=_get(v, "source", "unknown"),
+                rule_code=_get(v, "rule_code"),
+                rule_name=_get(v, "rule_name"),
+                matched_text=_get(v, "matched_text"),
+                violation_desc=_get(v, "violation_desc"),
+                suggestion=_get(v, "suggestion"),
+                severity=sev_val,
+                confidence=_get(v, "confidence", 0.9),
+                is_blocked=_get(v, "is_blocked", False)
             )
             db.add(ar)
 

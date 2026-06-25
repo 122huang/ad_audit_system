@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Card, Form, Input, Button, Select, Space, Alert, Tag, Result, Spin, Typography, Divider, List, message } from 'antd'
-import { AuditOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, BookOutlined, FileTextOutlined } from '@ant-design/icons'
+import { Card, Form, Input, Button, Select, Space, Alert, Tag, Result, Spin, Typography, Divider, List, message, Collapse, Descriptions, Badge } from 'antd'
+import { AuditOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined, BookOutlined, FileTextOutlined, BugOutlined, ApiOutlined } from '@ant-design/icons'
 import { auditAPI } from '../services/api'
 
 const { TextArea } = Input
 const { Title, Text, Paragraph } = Typography
+const { Panel } = Collapse
 
 const REGIONS = [
   { value: 'SG', label: '🇸🇬 新加坡' },
@@ -219,6 +220,40 @@ const TextAudit = () => {
               />
             </Card>
           )}
+
+          <Card
+            size="small"
+            style={{ marginTop: 16 }}
+            title={
+              <Space>
+                <BugOutlined />
+                <span>调试信息（API 原始返回）</span>
+                <Badge
+                  status={result.overall_status === 'rejected' ? 'error' : result.overall_status === 'warning' ? 'warning' : 'success'}
+                  text={`${result.hard_violations?.length || 0}项违规 / ${result.soft_references?.length || 0}项提示 / ${result.knowledge_references?.length || 0}条知识 / ${result.similar_cases?.length || 0}个案例`}
+                />
+              </Space>
+            }
+          >
+            <Descriptions column={2} size="small" bordered>
+              <Descriptions.Item label="风险等级">{result.overall_risk}</Descriptions.Item>
+              <Descriptions.Item label="审核状态">{result.overall_status}</Descriptions.Item>
+              <Descriptions.Item label="强制违规数">{result.hard_violations?.length || 0}</Descriptions.Item>
+              <Descriptions.Item label="经验提示数">{result.soft_references?.length || 0}</Descriptions.Item>
+              <Descriptions.Item label="知识库匹配数">{result.knowledge_references?.length || 0}</Descriptions.Item>
+              <Descriptions.Item label="相似案例数">{result.similar_cases?.length || 0}</Descriptions.Item>
+            </Descriptions>
+            <Collapse ghost style={{ marginTop: 8 }}>
+              <Panel header={<Space><ApiOutlined /> 查看原始 JSON 响应</Space>} key="raw">
+                <pre style={{
+                  background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8,
+                  maxHeight: 400, overflow: 'auto', fontSize: 12, lineHeight: 1.5
+                }}>
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              </Panel>
+            </Collapse>
+          </Card>
         </div>
       )}
     </div>
