@@ -7,7 +7,7 @@ import os
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import audit, knowledge, regions, rules
+from app.api import audit, knowledge, regions, rules, advanced_audit
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "dist")
 IS_PRODUCTION = os.path.exists(FRONTEND_DIR)
@@ -42,6 +42,7 @@ app.include_router(regions.router)
 app.include_router(audit.router)
 app.include_router(knowledge.router)
 app.include_router(rules.router)
+app.include_router(advanced_audit.router)
 
 
 @app.get("/api/health")

@@ -6,13 +6,15 @@ import {
   FileTextOutlined,
   BookOutlined,
   AlertOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import TextAudit from './pages/TextAudit'
 import Knowledge from './pages/Knowledge'
 import Rules from './pages/Rules'
 import Cases from './pages/Cases'
+import AdvancedAudit from './pages/AdvancedAudit'
 
 const { Header, Sider, Content } = Layout
 
@@ -23,6 +25,7 @@ function App() {
   const menuItems = [
     { key: 'dashboard', icon: <DashboardOutlined />, label: '首页' },
     { key: 'audit', icon: <AuditOutlined />, label: '广告审核' },
+    { key: 'advanced-audit', icon: <SafetyCertificateOutlined />, label: '高级审核' },
     { key: 'knowledge', icon: <BookOutlined />, label: '知识库管理' },
     { key: 'rules', icon: <AlertOutlined />, label: '法规规则' },
     { key: 'cases', icon: <FileTextOutlined />, label: '案例库' }
@@ -34,6 +37,8 @@ function App() {
         return <Dashboard onNavigate={setSelectedKey} />
       case 'audit':
         return <TextAudit />
+      case 'advanced-audit':
+        return <AdvancedAudit />
       case 'knowledge':
         return <Knowledge />
       case 'rules':

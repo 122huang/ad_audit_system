@@ -42,4 +42,9 @@ export const ruleAPI = {
   validate: (data) => request.post('/rules/validate', data)
 }
 
+export const advancedAuditAPI = {
+  auditR01: (data) => request.post('/advanced-audit/r01', data),
+  auditR02: (data) => request.post('/advanced-audit/r02', data)
+}
+
 export default request
