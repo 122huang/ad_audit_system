@@ -15,6 +15,10 @@ request.interceptors.response.use(
 
 export const auditAPI = {
   auditText: (data) => request.post('/audit/text', data),
+  auditImage: (formData) => request.post('/audit/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  auditVideo: (data) => request.post('/audit/video', data),
   getMaterials: (params) => request.get('/audit/materials', { params }),
   getMaterial: (id) => request.get(`/audit/materials/${id}`)
 }

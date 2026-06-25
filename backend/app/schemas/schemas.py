@@ -233,6 +233,27 @@ class TextAuditRequest(BaseModel):
     regions: List[str] = Field(default_factory=lambda: ["SG", "MY"], description="目标法域列表")
     advert_name: Optional[str] = None
     title: Optional[str] = None
+    category: str = "小家电"
+
+
+class ImageAuditRequest(BaseModel):
+    """图片审核请求 - 图片描述 + 图上文字"""
+    image_description: str = Field("", description="图片内容描述")
+    ocr_text: str = Field("", description="图片上提取的文字/文案")
+    regions: List[str] = Field(default_factory=lambda: ["SG", "MY"], description="目标法域列表")
+    category: str = "小家电"
+    advert_name: Optional[str] = None
+    title: Optional[str] = None
+
+
+class VideoAuditRequest(BaseModel):
+    """视频审核请求 - 视频脚本/旁白/字幕"""
+    video_script: str = Field(..., min_length=1, description="视频脚本/旁白/字幕文案")
+    video_description: str = Field("", description="视频画面描述")
+    regions: List[str] = Field(default_factory=lambda: ["SG", "MY"], description="目标法域列表")
+    category: str = "小家电"
+    advert_name: Optional[str] = None
+    title: Optional[str] = None
 
 
 class ValidationIssue(BaseModel):

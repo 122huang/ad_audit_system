@@ -7,10 +7,14 @@ import {
   BookOutlined,
   AlertOutlined,
   DashboardOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
+  PictureOutlined,
+  VideoCameraOutlined
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import TextAudit from './pages/TextAudit'
+import ImageAudit from './pages/ImageAudit'
+import VideoAudit from './pages/VideoAudit'
 import Knowledge from './pages/Knowledge'
 import Rules from './pages/Rules'
 import Cases from './pages/Cases'
@@ -24,7 +28,9 @@ function App() {
 
   const menuItems = [
     { key: 'dashboard', icon: <DashboardOutlined />, label: '首页' },
-    { key: 'audit', icon: <AuditOutlined />, label: '广告审核' },
+    { key: 'audit', icon: <AuditOutlined />, label: '文字审核' },
+    { key: 'image-audit', icon: <PictureOutlined />, label: '图片审核' },
+    { key: 'video-audit', icon: <VideoCameraOutlined />, label: '视频审核' },
     { key: 'advanced-audit', icon: <SafetyCertificateOutlined />, label: '高级审核' },
     { key: 'knowledge', icon: <BookOutlined />, label: '知识库管理' },
     { key: 'rules', icon: <AlertOutlined />, label: '法规规则' },
@@ -37,6 +43,10 @@ function App() {
         return <Dashboard onNavigate={setSelectedKey} />
       case 'audit':
         return <TextAudit />
+      case 'image-audit':
+        return <ImageAudit />
+      case 'video-audit':
+        return <VideoAudit />
       case 'advanced-audit':
         return <AdvancedAudit />
       case 'knowledge':
