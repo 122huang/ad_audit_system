@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-multipart
+jieba
+pypdf
+python-docx
+openpyxl
+python-dateutil
